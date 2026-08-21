@@ -929,10 +929,20 @@
       track.setAttribute('class','ring-track');
       svg.appendChild(track);
 
+      // Spread labels around the circle (instead of stacking on the right)
+      // so they don't overlap as more categories get added.
+      var labelAngle = -Math.PI/2 + i * (Math.PI * 2 / cats.length);
+      var labelR = r + 9;
+      var lx = CX + labelR * Math.cos(labelAngle);
+      var ly = CY + labelR * Math.sin(labelAngle);
+      var cosA = Math.cos(labelAngle);
+
       var label = document.createElementNS(ns,'text');
-      label.setAttribute('x', CX + r + 6);
-      label.setAttribute('y', CY + 3);
+      label.setAttribute('x', lx);
+      label.setAttribute('y', ly);
       label.setAttribute('class','ring-label');
+      label.setAttribute('text-anchor', cosA > 0.15 ? 'start' : (cosA < -0.15 ? 'end' : 'middle'));
+      label.setAttribute('dominant-baseline', 'middle');
       label.textContent = cat.name;
       svg.appendChild(label);
 
