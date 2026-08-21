@@ -692,9 +692,9 @@
     {name:"Advisor", cadence:30},
     {name:"Press / Media", cadence:30},
     {name:"Investor", cadence:90},
-    {name:"Peer / Founder", cadence:90},
+    {name:"Peer", cadence:90},
     {name:"Channel Partner", cadence:45},
-    {name:"Policy / DC", cadence:90},
+    {name:"Policy", cadence:90},
     {name:"Academic", cadence:120},
     {name:"Prospect", cadence:14},
     {name:"Client", cadence:30}
@@ -1656,6 +1656,22 @@
   // One-time backfill: add newly-introduced default categories to existing
   // accounts that were created before those categories existed.
   var NEW_DEFAULT_CATEGORIES = ["Prospect", "Client"];
+  var CATEGORY_RENAMES = { "Policy / DC": "Policy", "Peer / Founder": "Peer" };
+  function backfillCategoryRenames(){
+    var changed = false;
+    Object.keys(CATEGORY_RENAMES).forEach(function(oldName){
+      var newName = CATEGORY_RENAMES[oldName];
+      var cat = state.categories.find(function(c){ return c.name === oldName; });
+      if(cat){
+        cat.name = newName;
+        state.people.forEach(function(p){ if(p.category === oldName) p.category = newName; });
+        changed = true;
+      }
+    });
+    if(changed) touch();
+    return changed;
+  }
+
   function backfillDefaultCategories(){
     var added = false;
     NEW_DEFAULT_CATEGORIES.forEach(function(name){
@@ -1666,6 +1682,7 @@
         added = true;
       }
     });
+    if(backfillCategoryRenames()) added = true;
     if(added) touch();
     return added;
   }
