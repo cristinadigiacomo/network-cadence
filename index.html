@@ -13,15 +13,15 @@
 <link rel="icon" href="./icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Archivo:wght@900&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg: #12141c;
     --bg-panel: #181b26;
     --bg-panel-raised: #1e2230;
-    --ink: #4dffb8;
-    --ink-dim: #3ddba0;
-    --ink-faint: #2e9e79;
+    --ink: #e9e8e2;
+    --ink-dim: #9a9db0;
+    --ink-faint: #5e6274;
     --mint: #4dffb8;
     --mint-dim: #2e9e79;
     --hairline: #2a2e3d;
@@ -57,10 +57,11 @@
     gap:16px;
   }
   .brand h1{
-    font-family:'Newsreader', serif;
-    font-weight:500;
-    font-size:28px;
-    margin:0 0 4px;
+    font-family:'Archivo', sans-serif;
+    font-weight:900;
+    font-size:36px;
+    color:#ffffff;
+    margin:0 0 6px;
     letter-spacing:0.2px;
   }
   .brand p{
@@ -127,7 +128,7 @@
     font-family:'IBM Plex Mono', monospace;
     font-size:11px;
     font-weight:500;
-    fill:var(--ink-dim);
+    fill:var(--mint-dim);
     text-transform:uppercase;
     letter-spacing:0.06em;
   }
@@ -480,7 +481,7 @@
       </div>
       <div class="field">
         <label for="personContactInfo">Contact info</label>
-        <input type="text" id="personContactInfo" placeholder="Email / phone / LinkedIn">
+        <input type="text" id="personContactInfo" placeholder="Email, phone, and/or LinkedIn">
       </div>
     </div>
     <div class="field">
