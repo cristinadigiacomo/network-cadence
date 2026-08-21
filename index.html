@@ -1386,9 +1386,18 @@
           maxResults: '20'
         });
         driveFetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?' + params.toString())
-          .then(function(r){ return r.json(); })
-          .then(function(data){ renderMeetings(data.items || []); })
-          .catch(function(){ renderMeetings([]); });
+          .then(function(r){
+            return r.json().then(function(data){ return {status: r.status, data: data}; });
+          })
+          .then(function(res){
+            if(res.status !== 200){
+              var msg = (res.data && res.data.error && res.data.error.message) || ('HTTP ' + res.status);
+              renderMeetingsError(msg, res.status);
+              return;
+            }
+            renderMeetings(res.data.items || [], true);
+          })
+          .catch(function(err){ renderMeetingsError(err.message || 'Network error'); });
       });
     });
   }
@@ -1400,17 +1409,32 @@
     return d.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
   }
 
-  function renderMeetings(events){
+  function renderMeetingsError(msg, status){
     var panel = document.getElementById('meetingsPanel');
     var list = document.getElementById('meetingsList');
     panel.classList.add('show');
+    var hint = '';
+    if(status === 403) hint = ' — make sure the Google Calendar API is enabled in your Google Cloud project, and that you reconnected Google Drive after that (Sync status → Disconnect → Connect again) so the new permission takes effect.';
+    else if(status === 401) hint = ' — try disconnecting and reconnecting Google Drive.';
+    list.innerHTML = '<div class="meetings-empty">Couldn\'t load calendar events: ' + msg + hint + '</div>';
+  }
+
+  function renderMeetings(events, isRealResult){
+    var panel = document.getElementById('meetingsPanel');
+    var list = document.getElementById('meetingsList');
+    panel.classList.add('show');
+
+    if(isRealResult && !events.length){
+      list.innerHTML = '<div class="meetings-empty">No events on your calendar today.</div>';
+      return;
+    }
 
     var withPeople = events.filter(function(ev){
       return ev.attendees && ev.attendees.length && ev.status !== 'cancelled';
     });
 
     if(!withPeople.length){
-      list.innerHTML = '<div class="meetings-empty">No meetings with other people on your calendar today.</div>';
+      list.innerHTML = '<div class="meetings-empty">' + events.length + ' event(s) today, but none list other attendees (e.g. personal blocks, or invites where you\'re not the organizer and Google hides the guest list).</div>';
       return;
     }
 
