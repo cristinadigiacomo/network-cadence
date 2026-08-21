@@ -695,7 +695,9 @@
     {name:"Peer / Founder", cadence:90},
     {name:"Channel Partner", cadence:45},
     {name:"Policy / DC", cadence:90},
-    {name:"Academic", cadence:120}
+    {name:"Academic", cadence:120},
+    {name:"Prospect", cadence:14},
+    {name:"Client", cadence:30}
   ];
 
   function emptyState(){
@@ -1388,6 +1390,7 @@
           if(remote.updatedAt >= (state.updatedAt || 0)){
             state = remote;
           }
+          backfillDefaultCategories();
           render();
           refreshSyncUI();
         });
@@ -1640,7 +1643,25 @@
     showToast('Prefilled from your pipeline — pick a category and save');
   }
 
+  // One-time backfill: add newly-introduced default categories to existing
+  // accounts that were created before those categories existed.
+  var NEW_DEFAULT_CATEGORIES = ["Prospect", "Client"];
+  function backfillDefaultCategories(){
+    var added = false;
+    NEW_DEFAULT_CATEGORIES.forEach(function(name){
+      var exists = state.categories.some(function(c){ return c.name === name; });
+      if(!exists){
+        var def = DEFAULT_CATEGORIES.find(function(c){ return c.name === name; });
+        state.categories.push({name: def.name, cadence: def.cadence});
+        added = true;
+      }
+    });
+    if(added) touch();
+    return added;
+  }
+
   // ---------- Init ----------
+  backfillDefaultCategories();
   render();
   refreshSyncUI();
   handleIncomingAdd();
