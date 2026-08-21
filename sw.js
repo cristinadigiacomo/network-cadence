@@ -1,4 +1,4 @@
-const CACHE_NAME = 'network-cadence-v1';
+const CACHE_NAME = 'network-cadence-v2';
 const SHELL_FILES = [
   './',
   './index.html',
@@ -33,7 +33,26 @@ self.addEventListener('fetch', function(event){
     return;
   }
 
-  // Cache-first for the app shell (and fonts), falling back to network then updating cache.
+  // Network-first for the page itself, so redeploys show up on refresh.
+  // Falls back to cache when offline.
+  if(event.request.mode === 'navigate' || url.indexOf('index.html') !== -1){
+    event.respondWith(
+      fetch(event.request).then(function(response){
+        if(response && response.status === 200){
+          var copy = response.clone();
+          caches.open(CACHE_NAME).then(function(cache){ cache.put(event.request, copy); });
+        }
+        return response;
+      }).catch(function(){
+        return caches.match(event.request).then(function(cached){
+          return cached || caches.match('./index.html');
+        });
+      })
+    );
+    return;
+  }
+
+  // Cache-first for other shell assets (icons, manifest, fonts), falling back to network.
   event.respondWith(
     caches.match(event.request).then(function(cached){
       if(cached) return cached;
@@ -43,8 +62,6 @@ self.addEventListener('fetch', function(event){
           caches.open(CACHE_NAME).then(function(cache){ cache.put(event.request, copy); });
         }
         return response;
-      }).catch(function(){
-        if(event.request.mode === 'navigate') return caches.match('./index.html');
       });
     })
   );
