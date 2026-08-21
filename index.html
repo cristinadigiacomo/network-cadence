@@ -406,8 +406,29 @@
     display:flex;
     justify-content:space-between;
     align-items:center;
-    margin-bottom:10px;
+    margin-bottom:0;
+    padding:10px 14px;
+    border:1px solid var(--hairline);
+    border-radius:6px;
+    cursor:pointer;
+    background:var(--bg-panel-raised);
   }
+  .meetings-panel.expanded .meetings-head{
+    border-bottom-left-radius:0;
+    border-bottom-right-radius:0;
+  }
+  .meetings-head-left{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .meetings-chevron{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--ink-faint);
+    transition:transform 0.15s ease;
+  }
+  .meetings-panel.expanded .meetings-chevron{transform:rotate(90deg);}
   .meetings-title{
     font-family:'IBM Plex Mono', monospace;
     font-size:11px;
@@ -415,10 +436,36 @@
     letter-spacing:0.08em;
     color:var(--mint-dim);
   }
-  .meetings-list{
+  .meetings-count{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--ink-faint);
+    background:var(--bg-panel);
     border:1px solid var(--hairline);
-    border-radius:6px;
-    overflow:hidden;
+    padding:2px 8px;
+    border-radius:12px;
+  }
+  .meetings-list-wrap{
+    display:none;
+    border:1px solid var(--hairline);
+    border-top:none;
+    border-bottom-left-radius:6px;
+    border-bottom-right-radius:6px;
+    max-height:360px;
+    overflow-y:auto;
+  }
+  .meetings-panel.expanded .meetings-list-wrap{display:block;}
+  .meetings-list{}
+  .day-header{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:0.07em;
+    color:var(--ink-faint);
+    padding:9px 16px 4px;
+    background:var(--bg-panel);
+    position:sticky;
+    top:0;
   }
   .meeting-row{
     padding:12px 16px;
@@ -495,11 +542,17 @@
 </header>
 
 <div class="meetings-panel" id="meetingsPanel">
-  <div class="meetings-head">
-    <span class="meetings-title">Today's meetings</span>
+  <div class="meetings-head" id="meetingsHead">
+    <div class="meetings-head-left">
+      <span class="meetings-chevron">&#9656;</span>
+      <span class="meetings-title">This week's meetings</span>
+      <span class="meetings-count" id="meetingsCount">&hellip;</span>
+    </div>
     <button class="ghost small" id="refreshMeetingsBtn">Refresh</button>
   </div>
-  <div class="meetings-list" id="meetingsList"></div>
+  <div class="meetings-list-wrap">
+    <div class="meetings-list" id="meetingsList"></div>
+  </div>
 </div>
 
 <div class="orbit-wrap">
@@ -1377,13 +1430,14 @@
       getSelfEmail(function(){
         var now = new Date();
         var dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-        var dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+        var weekEnd = new Date(dayStart);
+        weekEnd.setDate(weekEnd.getDate() + 7);
         var params = new URLSearchParams({
           timeMin: dayStart.toISOString(),
-          timeMax: dayEnd.toISOString(),
+          timeMax: weekEnd.toISOString(),
           singleEvents: 'true',
           orderBy: 'startTime',
-          maxResults: '20'
+          maxResults: '100'
         });
         driveFetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?' + params.toString())
           .then(function(r){
@@ -1409,10 +1463,30 @@
     return d.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
   }
 
+  function eventDayKey(ev){
+    if(ev.start && ev.start.date) return ev.start.date;
+    if(ev.start && ev.start.dateTime) return ev.start.dateTime.slice(0,10);
+    return '';
+  }
+
+  function formatDayHeader(dayKey){
+    var d = new Date(dayKey + 'T00:00:00');
+    var today = todayStr();
+    var tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+    if(dayKey === today) return 'Today';
+    if(dayKey === tomorrow.toISOString().slice(0,10)) return 'Tomorrow';
+    return d.toLocaleDateString([], {weekday:'long', month:'short', day:'numeric'});
+  }
+
+  function setMeetingsCount(text){
+    document.getElementById('meetingsCount').textContent = text;
+  }
+
   function renderMeetingsError(msg, status){
     var panel = document.getElementById('meetingsPanel');
     var list = document.getElementById('meetingsList');
     panel.classList.add('show');
+    setMeetingsCount('!');
     var hint = '';
     if(status === 403) hint = ' — make sure the Google Calendar API is enabled in your Google Cloud project, and that you reconnected Google Drive after that (Sync status → Disconnect → Connect again) so the new permission takes effect.';
     else if(status === 401) hint = ' — try disconnecting and reconnecting Google Drive.';
@@ -1425,7 +1499,8 @@
     panel.classList.add('show');
 
     if(isRealResult && !events.length){
-      list.innerHTML = '<div class="meetings-empty">No events on your calendar today.</div>';
+      setMeetingsCount('0');
+      list.innerHTML = '<div class="meetings-empty">No events on your calendar this week.</div>';
       return;
     }
 
@@ -1434,12 +1509,24 @@
     });
 
     if(!withPeople.length){
-      list.innerHTML = '<div class="meetings-empty">' + events.length + ' event(s) today, but none list other attendees (e.g. personal blocks, or invites where you\'re not the organizer and Google hides the guest list).</div>';
+      setMeetingsCount('0');
+      list.innerHTML = '<div class="meetings-empty">' + events.length + ' event(s) this week, but none list other attendees (e.g. personal blocks, or invites where you\'re not the organizer and Google hides the guest list).</div>';
       return;
     }
 
+    setMeetingsCount(String(withPeople.length));
     list.innerHTML = '';
+    var lastDayKey = null;
     withPeople.forEach(function(ev){
+      var dayKey = eventDayKey(ev);
+      if(dayKey !== lastDayKey){
+        lastDayKey = dayKey;
+        var dayHeader = document.createElement('div');
+        dayHeader.className = 'day-header';
+        dayHeader.textContent = formatDayHeader(dayKey);
+        list.appendChild(dayHeader);
+      }
+
       var row = document.createElement('div');
       row.className = 'meeting-row';
 
@@ -1490,9 +1577,14 @@
     });
   }
 
-  document.getElementById('refreshMeetingsBtn').addEventListener('click', function(){
+  document.getElementById('refreshMeetingsBtn').addEventListener('click', function(e){
+    e.stopPropagation();
     loadTodaysMeetings();
     showToast('Refreshed meetings');
+  });
+
+  document.getElementById('meetingsHead').addEventListener('click', function(){
+    document.getElementById('meetingsPanel').classList.toggle('expanded');
   });
 
   // ---------- Sync modal ----------
