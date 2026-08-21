@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Network Cadence</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#12141c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cadence">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="icon" href="./icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #12141c;
+    --bg-panel: #181b26;
+    --bg-panel-raised: #1e2230;
+    --ink: #e9e8e2;
+    --ink-dim: #9a9db0;
+    --ink-faint: #5e6274;
+    --hairline: #2a2e3d;
+    --gold: #c9a227;
+    --gold-dim: #8a7223;
+    --rose: #c1666b;
+    --rose-dim: #4a2c2e;
+    --sage: #7a9b76;
+    --sage-dim: #2b3a2a;
+    --amber: #d0a24c;
+    --amber-dim: #4a3d20;
+    --radius: 3px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    min-height:100vh;
+    padding-bottom:80px;
+  }
+  ::selection{background:var(--gold-dim); color:var(--ink);}
+
+  /* ---------- Header ---------- */
+  header{
+    padding:36px 40px 20px;
+    border-bottom:1px solid var(--hairline);
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    flex-wrap:wrap;
+    gap:16px;
+  }
+  .brand h1{
+    font-family:'Newsreader', serif;
+    font-weight:500;
+    font-size:28px;
+    margin:0 0 4px;
+    letter-spacing:0.2px;
+  }
+  .brand p{
+    margin:0;
+    font-size:13px;
+    color:var(--ink-dim);
+    font-style:italic;
+    font-family:'Newsreader', serif;
+  }
+  .header-right{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    gap:10px;
+  }
+  .header-stats{
+    display:flex;
+    gap:28px;
+    font-family:'IBM Plex Mono', monospace;
+  }
+  .stat{text-align:right;}
+  .stat .n{font-size:22px; display:block; line-height:1;}
+  .stat .l{font-size:10px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.08em;}
+  .stat.overdue .n{color:var(--rose);}
+  .stat.soon .n{color:var(--amber);}
+  .stat.ok .n{color:var(--sage);}
+
+  /* ---------- Sync status ---------- */
+  .sync-status{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    color:var(--ink-faint);
+    cursor:pointer;
+    border:1px solid var(--hairline);
+    border-radius:var(--radius);
+    padding:5px 10px;
+    background:var(--bg-panel-raised);
+    transition:border-color 0.15s ease;
+  }
+  .sync-status:hover{border-color:var(--ink-faint);}
+  .sync-dot{width:7px; height:7px; border-radius:50%; flex-shrink:0;}
+  .sync-status.synced .sync-dot{background:var(--sage);}
+  .sync-status.offline .sync-dot{background:var(--amber);}
+  .sync-status.signedout .sync-dot{background:var(--ink-faint);}
+  .sync-status.syncing .sync-dot{background:var(--gold); animation:pulse 1s ease-in-out infinite;}
+  .sync-status.error .sync-dot{background:var(--rose);}
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+  /* ---------- Orbit ---------- */
+  .orbit-wrap{
+    display:flex;
+    justify-content:center;
+    padding:28px 20px 8px;
+    position:relative;
+  }
+  .orbit-wrap svg{max-width:100%; height:auto;}
+  .ring-track{fill:none; stroke:var(--hairline); stroke-width:1;}
+  .ring-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:9px;
+    fill:var(--ink-faint);
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+  }
+  .center-mark{fill:var(--ink-faint);}
+  .center-label{
+    font-family:'Newsreader', serif;
+    font-style:italic;
+    font-size:11px;
+    fill:var(--ink-dim);
+  }
+  .orbit-dot{
+    cursor:pointer;
+    transition:r 0.15s ease;
+  }
+  .orbit-dot:hover{r:7;}
+  .orbit-dot.overdue{fill:var(--rose);}
+  .orbit-dot.soon{fill:var(--amber);}
+  .orbit-dot.ok{fill:var(--sage);}
+  .orbit-group{
+    transform-origin:center;
+    animation:spin linear infinite;
+  }
+  @keyframes spin{ from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+  @media (prefers-reduced-motion: reduce){
+    .orbit-group{animation:none;}
+  }
+  .orbit-dot-label{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:0;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 0.1s ease;
+  }
+
+  /* ---------- Toolbar ---------- */
+  .toolbar{
+    max-width:1080px;
+    margin:24px auto 0;
+    padding:0 40px;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  input[type="text"], input[type="search"], input[type="date"], input[type="number"], select, textarea{
+    background:var(--bg-panel-raised);
+    border:1px solid var(--hairline);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:13px;
+    padding:9px 12px;
+    border-radius:var(--radius);
+    outline:none;
+  }
+  input:focus, select:focus, textarea:focus{border-color:var(--gold-dim);}
+  .search-input{flex:1; min-width:180px;}
+  select#filterCategory{min-width:150px;}
+  button{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:13px;
+    font-weight:500;
+    border-radius:var(--radius);
+    border:1px solid var(--hairline);
+    background:var(--bg-panel-raised);
+    color:var(--ink);
+    padding:9px 16px;
+    cursor:pointer;
+    transition:border-color 0.15s ease, background 0.15s ease;
+  }
+  button:hover{border-color:var(--ink-faint);}
+  button:focus-visible{outline:2px solid var(--gold); outline-offset:1px;}
+  button.primary{
+    background:var(--gold-dim);
+    border-color:var(--gold-dim);
+    color:#100;
+    color:#161200;
+  }
+  button.primary:hover{background:var(--gold);}
+  button.ghost{background:transparent;}
+  button.small{padding:5px 10px; font-size:12px;}
+  button.danger:hover{border-color:var(--rose); color:var(--rose);}
+
+  /* ---------- List ---------- */
+  .list-wrap{
+    max-width:1080px;
+    margin:20px auto 0;
+    padding:0 40px;
+  }
+  table{width:100%; border-collapse:collapse;}
+  thead th{
+    text-align:left;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--ink-faint);
+    font-weight:500;
+    padding:0 10px 10px;
+    border-bottom:1px solid var(--hairline);
+    cursor:pointer;
+    user-select:none;
+  }
+  thead th:hover{color:var(--ink-dim);}
+  tbody tr{
+    border-bottom:1px solid var(--hairline);
+  }
+  tbody tr:hover{background:var(--bg-panel);}
+  tbody td{
+    padding:13px 10px;
+    font-size:13.5px;
+    vertical-align:middle;
+  }
+  .status-dot{
+    display:inline-block;
+    width:8px; height:8px;
+    border-radius:50%;
+    margin-right:9px;
+    vertical-align:middle;
+  }
+  .status-dot.overdue{background:var(--rose);}
+  .status-dot.soon{background:var(--amber);}
+  .status-dot.ok{background:var(--sage);}
+  .name-cell{font-weight:500;}
+  .category-pill{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+    color:var(--ink-dim);
+    border:1px solid var(--hairline);
+    padding:3px 7px;
+    border-radius:2px;
+    white-space:nowrap;
+  }
+  .due-text{font-family:'IBM Plex Mono', monospace; font-size:12.5px;}
+  .due-text.overdue{color:var(--rose);}
+  .due-text.soon{color:var(--amber);}
+  .due-text.ok{color:var(--ink-dim);}
+  .notes-cell{color:var(--ink-dim); font-size:12.5px; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .row-actions{display:flex; gap:6px; justify-content:flex-end;}
+  .empty-state{
+    text-align:center;
+    padding:60px 20px;
+    color:var(--ink-faint);
+    font-family:'Newsreader', serif;
+    font-style:italic;
+    font-size:15px;
+  }
+
+  /* ---------- Modal ---------- */
+  .modal-overlay{
+    display:none;
+    position:fixed; inset:0;
+    background:rgba(10,11,16,0.72);
+    align-items:center;
+    justify-content:center;
+    z-index:50;
+    padding:20px;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal{
+    background:var(--bg-panel);
+    border:1px solid var(--hairline);
+    border-radius:6px;
+    width:100%;
+    max-width:440px;
+    padding:26px;
+    max-height:88vh;
+    overflow-y:auto;
+  }
+  .modal h2{
+    font-family:'Newsreader', serif;
+    font-weight:500;
+    font-size:19px;
+    margin:0 0 18px;
+  }
+  .modal p.modal-sub{
+    margin:-12px 0 18px;
+    font-size:12.5px;
+    color:var(--ink-dim);
+    line-height:1.5;
+  }
+  .field{margin-bottom:14px;}
+  .field label{
+    display:block;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--ink-faint);
+    margin-bottom:6px;
+    font-family:'IBM Plex Mono', monospace;
+  }
+  .field input, .field select, .field textarea{width:100%;}
+  .field textarea{resize:vertical; min-height:56px; font-family:'IBM Plex Sans', sans-serif;}
+  .field-row{display:flex; gap:10px;}
+  .field-row .field{flex:1;}
+  .modal-actions{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:20px;
+    padding-top:16px;
+    border-top:1px solid var(--hairline);
+  }
+  .modal-actions .right{display:flex; gap:8px;}
+  .cadence-hint{font-size:11px; color:var(--ink-faint); margin-top:4px;}
+
+  /* category manager rows */
+  .cat-row{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    margin-bottom:8px;
+  }
+  .cat-row input[type="text"]{flex:2;}
+  .cat-row input[type="number"]{flex:1; width:70px;}
+
+  .toast{
+    position:fixed;
+    bottom:24px; left:50%;
+    transform:translateX(-50%);
+    background:var(--bg-panel-raised);
+    border:1px solid var(--hairline);
+    padding:10px 18px;
+    border-radius:var(--radius);
+    font-size:13px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 0.2s ease, transform 0.2s ease;
+    z-index:100;
+    max-width:calc(100vw - 40px);
+    text-align:center;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(-6px);}
+
+  footer{
+    max-width:1080px;
+    margin:36px auto 0;
+    padding:16px 40px 0;
+    border-top:1px solid var(--hairline);
+    display:flex;
+    justify-content:space-between;
+    color:var(--ink-faint);
+    font-size:11.5px;
+    font-family:'IBM Plex Mono', monospace;
+  }
+  footer a{color:var(--ink-faint);}
+
+  @media (max-width: 720px){
+    header{padding:20px 18px 14px;}
+    .header-right{align-items:flex-start; width:100%;}
+    .header-stats{gap:20px;}
+    .toolbar, .list-wrap, footer{padding-left:18px; padding-right:18px;}
+    thead{display:none;}
+    tbody tr{display:block; padding:10px 0;}
+    tbody td{display:flex; justify-content:space-between; padding:5px 4px;}
+    tbody td::before{content:attr(data-label); color:var(--ink-faint); font-family:'IBM Plex Mono', monospace; font-size:10px; text-transform:uppercase;}
+    .notes-cell{max-width:none; white-space:normal;}
+    .row-actions{justify-content:flex-start;}
+    .orbit-wrap svg{width:280px; height:280px;}
+  }
+
+  @media (max-width: 400px){
+    .orbit-wrap svg{width:230px; height:230px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>Network Cadence</h1>
+    <p>The people worth staying close to, and how often that closeness needs tending.</p>
+  </div>
+  <div class="header-right">
+    <div class="header-stats">
+      <div class="stat overdue"><span class="n" id="statOverdue">0</span><span class="l">Overdue</span></div>
+      <div class="stat soon"><span class="n" id="statSoon">0</span><span class="l">Due Soon</span></div>
+      <div class="stat ok"><span class="n" id="statOk">0</span><span class="l">On Track</span></div>
+    </div>
+    <div class="sync-status signedout" id="syncStatus">
+      <span class="sync-dot"></span>
+      <span id="syncStatusLabel">Sign in to sync</span>
+    </div>
+  </div>
+</header>
+
+<div class="orbit-wrap">
+  <svg id="orbitSvg" width="440" height="440" viewBox="0 0 440 440"></svg>
+</div>
+
+<div class="toolbar">
+  <input type="search" id="searchInput" class="search-input" placeholder="Search by name or notes…">
+  <select id="filterCategory"><option value="">All categories</option></select>
+  <button class="ghost small" id="sortDueBtn" title="Sort by urgency">Sort: urgency</button>
+  <button id="manageCategoriesBtn" class="ghost">Categories</button>
+  <button id="exportBtn" class="ghost">Export</button>
+  <button id="importBtn" class="ghost">Import</button>
+  <input type="file" id="importFile" accept="application/json" style="display:none;">
+  <button id="addPersonBtn" class="primary">+ Add person</button>
+</div>
+
+<div class="list-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th style="width:26px;"></th>
+        <th data-sort="name">Name</th>
+        <th data-sort="category">Category</th>
+        <th data-sort="cadence">Cadence</th>
+        <th data-sort="last">Last contact</th>
+        <th data-sort="due">Next due</th>
+        <th>Notes</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="peopleTbody"></tbody>
+  </table>
+  <div class="empty-state" id="emptyState" style="display:none;">No one here yet — add the first person you want to stay close to.</div>
+</div>
+
+<footer>
+  <span id="storageFooter">Stored locally in this browser.</span>
+  <span id="countFooter"></span>
+</footer>
+
+<!-- Add/Edit Person Modal -->
+<div class="modal-overlay" id="personModalOverlay">
+  <div class="modal">
+    <h2 id="personModalTitle">Add person</h2>
+    <input type="hidden" id="personId">
+    <div class="field">
+      <label for="personName">Name</label>
+      <input type="text" id="personName" placeholder="Full name">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="personCategory">Category</label>
+        <select id="personCategory"></select>
+      </div>
+      <div class="field">
+        <label for="personCadence">Cadence (days)</label>
+        <input type="number" id="personCadence" min="1">
+      </div>
+    </div>
+    <div class="cadence-hint" id="cadenceHint"></div>
+    <div class="field-row" style="margin-top:14px;">
+      <div class="field">
+        <label for="personLastContact">Last contact</label>
+        <input type="date" id="personLastContact">
+      </div>
+      <div class="field">
+        <label for="personContactInfo">Contact info</label>
+        <input type="text" id="personContactInfo" placeholder="Email / phone / LinkedIn">
+      </div>
+    </div>
+    <div class="field">
+      <label for="personNotes">Notes</label>
+      <textarea id="personNotes" placeholder="Why they matter, what to bring up next time…"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="ghost danger small" id="deletePersonBtn" style="display:none;">Delete</button>
+      <div class="right">
+        <button class="ghost" id="cancelPersonBtn">Cancel</button>
+        <button class="primary" id="savePersonBtn">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Manage Categories Modal -->
+<div class="modal-overlay" id="categoryModalOverlay">
+  <div class="modal">
+    <h2>Categories & default cadence</h2>
+    <div id="categoryRows"></div>
+    <button class="ghost small" id="addCategoryBtn" style="margin-top:6px;">+ Add category</button>
+    <div class="modal-actions">
+      <div></div>
+      <div class="right">
+        <button id="closeCategoriesBtn" class="primary">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Sync / Account Modal -->
+<div class="modal-overlay" id="syncModalOverlay">
+  <div class="modal">
+    <h2>Google Drive sync</h2>
+    <p class="modal-sub" id="syncModalBody">Connect Google Drive so this tracker stays the same on your phone and your laptop. Your data is stored in a hidden app folder in your Drive — it won't show up in your regular Drive file list.</p>
+    <div class="modal-actions">
+      <div></div>
+      <div class="right">
+        <button class="ghost" id="closeSyncBtn">Close</button>
+        <button class="primary" id="connectDriveBtn">Connect Google Drive</button>
+        <button class="ghost danger" id="disconnectDriveBtn" style="display:none;">Disconnect</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+(function(){
+  "use strict";
+
+  // ============================================================
+  // CONFIG — replace with your real Google Cloud OAuth Client ID
+  // ============================================================
+  var GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
+  var DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+  var DRIVE_FILENAME = "network-cadence-data.json";
+
+  var STORAGE_KEY = "network-cadence-data-v1"; // legacy local key, also used as local mirror
+  var TOKEN_KEY = "network-cadence-drive-token";
+
+  var DEFAULT_CATEGORIES = [
+    {name:"Advisor", cadence:30},
+    {name:"Press / Media", cadence:30},
+    {name:"Investor", cadence:90},
+    {name:"Peer / Founder", cadence:90},
+    {name:"Channel Partner", cadence:45},
+    {name:"Policy / DC", cadence:90},
+    {name:"Academic", cadence:120}
+  ];
+
+  function emptyState(){
+    return { people: [], categories: DEFAULT_CATEGORIES.slice(), updatedAt: 0 };
+  }
+
+  var state = loadLocal();
+
+  function loadLocal(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        var parsed = JSON.parse(raw);
+        if(parsed && parsed.people && parsed.categories){
+          if(typeof parsed.updatedAt !== 'number') parsed.updatedAt = 0;
+          return parsed;
+        }
+      }
+    }catch(e){}
+    return emptyState();
+  }
+
+  function saveLocal(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  function uid(){
+    return 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+  }
+
+  function todayStr(){
+    var d = new Date();
+    return d.toISOString().slice(0,10);
+  }
+
+  function daysBetween(dateStr, refStr){
+    var a = new Date(dateStr + "T00:00:00");
+    var b = new Date((refStr||todayStr()) + "T00:00:00");
+    return Math.round((b - a) / 86400000);
+  }
+
+  function statusFor(person){
+    if(!person.lastContact) return "overdue";
+    var elapsed = daysBetween(person.lastContact);
+    var remaining = person.cadence - elapsed;
+    if(remaining < 0) return "overdue";
+    if(remaining <= 7) return "soon";
+    return "ok";
+  }
+
+  function dueLabel(person){
+    var elapsed = daysBetween(person.lastContact || todayStr());
+    var remaining = person.cadence - elapsed;
+    if(remaining < 0) return Math.abs(remaining) + "d overdue";
+    if(remaining === 0) return "due today";
+    return "due in " + remaining + "d";
+  }
+
+  function categoryCadence(catName){
+    var c = state.categories.find(function(c){return c.name === catName;});
+    return c ? c.cadence : 60;
+  }
+
+  function touch(){
+    state.updatedAt = Date.now();
+  }
+
+  // ---------- Rendering ----------
+
+  var sortMode = "due"; // due | name | category | cadence | last
+  var sortDir = 1;
+
+  function render(){
+    renderCategorySelects();
+    renderStats();
+    renderTable();
+    renderOrbit();
+    saveLocal();
+    scheduleDriveWrite();
+  }
+
+  function renderCategorySelects(){
+    var filterSel = document.getElementById('filterCategory');
+    var current = filterSel.value;
+    filterSel.innerHTML = '<option value="">All categories</option>';
+    state.categories.forEach(function(c){
+      var o = document.createElement('option');
+      o.value = c.name; o.textContent = c.name;
+      filterSel.appendChild(o);
+    });
+    filterSel.value = current;
+
+    var personSel = document.getElementById('personCategory');
+    var pCurrent = personSel.value;
+    personSel.innerHTML = '';
+    state.categories.forEach(function(c){
+      var o = document.createElement('option');
+      o.value = c.name; o.textContent = c.name;
+      personSel.appendChild(o);
+    });
+    if(pCurrent) personSel.value = pCurrent;
+  }
+
+  function renderStats(){
+    var counts = {overdue:0, soon:0, ok:0};
+    state.people.forEach(function(p){ counts[statusFor(p)]++; });
+    document.getElementById('statOverdue').textContent = counts.overdue;
+    document.getElementById('statSoon').textContent = counts.soon;
+    document.getElementById('statOk').textContent = counts.ok;
+    document.getElementById('countFooter').textContent = state.people.length + ' people tracked';
+  }
+
+  function getFilteredSorted(){
+    var q = document.getElementById('searchInput').value.trim().toLowerCase();
+    var cat = document.getElementById('filterCategory').value;
+    var list = state.people.filter(function(p){
+      if(cat && p.category !== cat) return false;
+      if(q){
+        var hay = (p.name + ' ' + (p.notes||'') + ' ' + (p.contactInfo||'')).toLowerCase();
+        if(hay.indexOf(q) === -1) return false;
+      }
+      return true;
+    });
+    list.sort(function(a,b){
+      var av, bv;
+      if(sortMode === 'due'){
+        av = a.cadence - daysBetween(a.lastContact || todayStr());
+        bv = b.cadence - daysBetween(b.lastContact || todayStr());
+      } else if(sortMode === 'name'){
+        av = a.name.toLowerCase(); bv = b.name.toLowerCase();
+      } else if(sortMode === 'category'){
+        av = a.category.toLowerCase(); bv = b.category.toLowerCase();
+      } else if(sortMode === 'cadence'){
+        av = a.cadence; bv = b.cadence;
+      } else if(sortMode === 'last'){
+        av = a.lastContact || ''; bv = b.lastContact || '';
+      }
+      if(av < bv) return -1*sortDir;
+      if(av > bv) return 1*sortDir;
+      return 0;
+    });
+    return list;
+  }
+
+  function renderTable(){
+    var tbody = document.getElementById('peopleTbody');
+    var list = getFilteredSorted();
+    tbody.innerHTML = '';
+    document.getElementById('emptyState').style.display = list.length ? 'none' : 'block';
+
+    list.forEach(function(p){
+      var status = statusFor(p);
+      var tr = document.createElement('tr');
+
+      tr.innerHTML =
+        '<td data-label=""><span class="status-dot ' + status + '"></span></td>' +
+        '<td data-label="Name" class="name-cell"></td>' +
+        '<td data-label="Category"><span class="category-pill"></span></td>' +
+        '<td data-label="Cadence"></td>' +
+        '<td data-label="Last contact"></td>' +
+        '<td data-label="Next due" class="due-text ' + status + '"></td>' +
+        '<td data-label="Notes" class="notes-cell"></td>' +
+        '<td data-label=""></td>';
+
+      tr.querySelector('.name-cell').textContent = p.name;
+      tr.querySelector('.category-pill').textContent = p.category;
+      tr.children[3].textContent = 'every ' + p.cadence + 'd';
+      tr.children[4].textContent = p.lastContact || '—';
+      tr.children[5].textContent = dueLabel(p);
+      tr.querySelector('.notes-cell').textContent = p.notes || '';
+      tr.querySelector('.notes-cell').title = p.notes || '';
+
+      var actionsTd = tr.children[7];
+      var logBtn = document.createElement('button');
+      logBtn.className = 'small ghost';
+      logBtn.textContent = 'Log contact';
+      logBtn.addEventListener('click', function(e){
+        e.stopPropagation();
+        p.lastContact = todayStr();
+        touch();
+        render();
+        showToast('Logged contact with ' + p.name);
+      });
+
+      var editBtn = document.createElement('button');
+      editBtn.className = 'small ghost';
+      editBtn.textContent = 'Edit';
+      editBtn.style.marginLeft = '6px';
+      editBtn.addEventListener('click', function(e){
+        e.stopPropagation();
+        openPersonModal(p);
+      });
+
+      var wrap = document.createElement('div');
+      wrap.className = 'row-actions';
+      wrap.appendChild(logBtn);
+      wrap.appendChild(editBtn);
+      actionsTd.appendChild(wrap);
+
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ---------- Orbit visualization ----------
+
+  function renderOrbit(){
+    var svg = document.getElementById('orbitSvg');
+    svg.innerHTML = '';
+    var W = 440, CX = 220, CY = 220;
+
+    // categories sorted by cadence ascending -> inner ring = most frequent
+    var cats = state.categories.slice().sort(function(a,b){ return a.cadence - b.cadence; });
+    var maxRing = 190;
+    var minRing = 55;
+    var step = cats.length > 1 ? (maxRing - minRing) / (cats.length - 1) : 0;
+
+    var ns = "http://www.w3.org/2000/svg";
+
+    // center mark
+    var center = document.createElementNS(ns,'circle');
+    center.setAttribute('cx', CX); center.setAttribute('cy', CY); center.setAttribute('r', 3);
+    center.setAttribute('class','center-mark');
+    svg.appendChild(center);
+
+    cats.forEach(function(cat, i){
+      var r = minRing + step * i;
+      var track = document.createElementNS(ns,'circle');
+      track.setAttribute('cx', CX); track.setAttribute('cy', CY); track.setAttribute('r', r);
+      track.setAttribute('class','ring-track');
+      svg.appendChild(track);
+
+      var label = document.createElementNS(ns,'text');
+      label.setAttribute('x', CX + r + 6);
+      label.setAttribute('y', CY + 3);
+      label.setAttribute('class','ring-label');
+      label.textContent = cat.name;
+      svg.appendChild(label);
+
+      var peopleInCat = state.people.filter(function(p){ return p.category === cat.name; });
+      var group = document.createElementNS(ns,'g');
+      group.setAttribute('class','orbit-group');
+      var duration = 40 + i * 25;
+      group.style.animationDuration = duration + 's';
+      group.setAttribute('transform-origin', CX + 'px ' + CY + 'px');
+
+      peopleInCat.forEach(function(p, j){
+        var angle = (j / Math.max(peopleInCat.length,1)) * Math.PI * 2 + (i * 0.4);
+        var x = CX + r * Math.cos(angle);
+        var y = CY + r * Math.sin(angle);
+        var status = statusFor(p);
+        var dot = document.createElementNS(ns,'circle');
+        dot.setAttribute('cx', x); dot.setAttribute('cy', y); dot.setAttribute('r', 5);
+        dot.setAttribute('class', 'orbit-dot ' + status);
+        var title = document.createElementNS(ns,'title');
+        title.textContent = p.name + ' — ' + dueLabel(p);
+        dot.appendChild(title);
+        dot.addEventListener('click', function(){
+          document.getElementById('searchInput').value = p.name;
+          renderTable();
+          document.querySelector('.list-wrap').scrollIntoView({behavior:'smooth', block:'start'});
+        });
+        group.appendChild(dot);
+      });
+
+      svg.appendChild(group);
+    });
+  }
+
+  // ---------- Person modal ----------
+
+  var personModal = document.getElementById('personModalOverlay');
+
+  function openPersonModal(person){
+    document.getElementById('personModalTitle').textContent = person ? 'Edit person' : 'Add person';
+    document.getElementById('personId').value = person ? person.id : '';
+    document.getElementById('personName').value = person ? person.name : '';
+    renderCategorySelects();
+    document.getElementById('personCategory').value = person ? person.category : (state.categories[0] ? state.categories[0].name : '');
+    document.getElementById('personCadence').value = person ? person.cadence : categoryCadence(document.getElementById('personCategory').value);
+    document.getElementById('personLastContact').value = person ? (person.lastContact || todayStr()) : todayStr();
+    document.getElementById('personContactInfo').value = person ? (person.contactInfo || '') : '';
+    document.getElementById('personNotes').value = person ? (person.notes || '') : '';
+    document.getElementById('deletePersonBtn').style.display = person ? 'inline-block' : 'none';
+    updateCadenceHint();
+    personModal.classList.add('open');
+    document.getElementById('personName').focus();
+  }
+
+  function updateCadenceHint(){
+    var cat = document.getElementById('personCategory').value;
+    document.getElementById('cadenceHint').textContent = 'Category default: every ' + categoryCadence(cat) + ' days. Override above if this person needs a different rhythm.';
+  }
+
+  document.getElementById('personCategory').addEventListener('change', function(){
+    updateCadenceHint();
+  });
+
+  document.getElementById('addPersonBtn').addEventListener('click', function(){ openPersonModal(null); });
+  document.getElementById('cancelPersonBtn').addEventListener('click', function(){ personModal.classList.remove('open'); });
+  personModal.addEventListener('click', function(e){ if(e.target === personModal) personModal.classList.remove('open'); });
+
+  document.getElementById('savePersonBtn').addEventListener('click', function(){
+    var name = document.getElementById('personName').value.trim();
+    if(!name){ document.getElementById('personName').focus(); return; }
+    var id = document.getElementById('personId').value;
+    var cadence = parseInt(document.getElementById('personCadence').value, 10) || categoryCadence(document.getElementById('personCategory').value);
+
+    var data = {
+      name: name,
+      category: document.getElementById('personCategory').value,
+      cadence: cadence,
+      lastContact: document.getElementById('personLastContact').value || todayStr(),
+      contactInfo: document.getElementById('personContactInfo').value.trim(),
+      notes: document.getElementById('personNotes').value.trim()
+    };
+
+    if(id){
+      var existing = state.people.find(function(p){ return p.id === id; });
+      Object.assign(existing, data);
+      showToast('Saved changes to ' + name);
+    } else {
+      data.id = uid();
+      state.people.push(data);
+      showToast('Added ' + name);
+    }
+    touch();
+    personModal.classList.remove('open');
+    render();
+  });
+
+  document.getElementById('deletePersonBtn').addEventListener('click', function(){
+    var id = document.getElementById('personId').value;
+    var person = state.people.find(function(p){ return p.id === id; });
+    if(person && confirm('Remove ' + person.name + ' from the tracker?')){
+      state.people = state.people.filter(function(p){ return p.id !== id; });
+      touch();
+      personModal.classList.remove('open');
+      render();
+      showToast('Removed ' + person.name);
+    }
+  });
+
+  // ---------- Category modal ----------
+
+  var categoryModal = document.getElementById('categoryModalOverlay');
+
+  function renderCategoryRows(){
+    var wrap = document.getElementById('categoryRows');
+    wrap.innerHTML = '';
+    state.categories.forEach(function(cat, idx){
+      var row = document.createElement('div');
+      row.className = 'cat-row';
+      row.innerHTML =
+        '<input type="text" value="" data-idx="' + idx + '" data-field="name">' +
+        '<input type="number" min="1" value="" data-idx="' + idx + '" data-field="cadence">' +
+        '<button class="small ghost danger" data-idx="' + idx + '">✕</button>';
+      row.children[0].value = cat.name;
+      row.children[1].value = cat.cadence;
+      wrap.appendChild(row);
+
+      row.children[0].addEventListener('change', function(e){
+        var oldName = cat.name;
+        cat.name = e.target.value.trim() || cat.name;
+        state.people.forEach(function(p){ if(p.category === oldName) p.category = cat.name; });
+        touch();
+        render(); renderCategoryRows();
+      });
+      row.children[1].addEventListener('change', function(e){
+        cat.cadence = parseInt(e.target.value,10) || cat.cadence;
+        touch();
+        render();
+      });
+      row.children[2].addEventListener('click', function(){
+        var inUse = state.people.some(function(p){ return p.category === cat.name; });
+        if(inUse && !confirm('People are assigned to "' + cat.name + '". Remove anyway? They will keep the category name but it will no longer appear in the list.')) return;
+        state.categories.splice(idx,1);
+        touch();
+        renderCategoryRows();
+        render();
+      });
+    });
+  }
+
+  document.getElementById('manageCategoriesBtn').addEventListener('click', function(){
+    renderCategoryRows();
+    categoryModal.classList.add('open');
+  });
+  document.getElementById('closeCategoriesBtn').addEventListener('click', function(){
+    categoryModal.classList.remove('open');
+  });
+  categoryModal.addEventListener('click', function(e){ if(e.target === categoryModal) categoryModal.classList.remove('open'); });
+
+  document.getElementById('addCategoryBtn').addEventListener('click', function(){
+    state.categories.push({name:'New category', cadence:60});
+    touch();
+    renderCategoryRows();
+    render();
+  });
+
+  // ---------- Toolbar ----------
+
+  document.getElementById('searchInput').addEventListener('input', renderTable);
+  document.getElementById('filterCategory').addEventListener('change', renderTable);
+
+  document.getElementById('sortDueBtn').addEventListener('click', function(){
+    sortMode = 'due'; sortDir = 1; renderTable();
+    showToast('Sorted by urgency');
+  });
+
+  document.querySelectorAll('th[data-sort]').forEach(function(th){
+    th.addEventListener('click', function(){
+      var mode = th.getAttribute('data-sort');
+      if(sortMode === mode){ sortDir *= -1; } else { sortMode = mode; sortDir = 1; }
+      renderTable();
+    });
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', function(){
+    var blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'network-cadence-backup-' + todayStr() + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('Exported backup');
+  });
+
+  document.getElementById('importBtn').addEventListener('click', function(){
+    document.getElementById('importFile').click();
+  });
+  document.getElementById('importFile').addEventListener('change', function(e){
+    var file = e.target.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      try{
+        var parsed = JSON.parse(reader.result);
+        if(parsed && parsed.people && parsed.categories){
+          if(confirm('Replace current data with the imported file? This cannot be undone.')){
+            state = parsed;
+            if(typeof state.updatedAt !== 'number') state.updatedAt = 0;
+            touch();
+            render();
+            showToast('Imported ' + state.people.length + ' people');
+          }
+        } else {
+          alert('That file does not look like a Network Cadence backup.');
+        }
+      }catch(err){
+        alert('Could not read that file: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+
+  // ---------- Toast ----------
+  var toastTimer;
+  function showToast(msg){
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2200);
+  }
+
+  // ============================================================
+  // Google Drive sync
+  // ============================================================
+
+  var driveState = {
+    tokenClient: null,
+    accessToken: null,
+    tokenExpiry: 0,
+    fileId: null,
+    online: navigator.onLine,
+    signedIn: false,
+    lastError: null
+  };
+
+  function loadStoredToken(){
+    try{
+      var raw = localStorage.getItem(TOKEN_KEY);
+      if(!raw) return;
+      var t = JSON.parse(raw);
+      if(t && t.accessToken && t.expiry > Date.now()){
+        driveState.accessToken = t.accessToken;
+        driveState.tokenExpiry = t.expiry;
+        driveState.signedIn = true;
+      }
+    }catch(e){}
+  }
+
+  function storeToken(accessToken, expiresInSeconds){
+    driveState.accessToken = accessToken;
+    driveState.tokenExpiry = Date.now() + (expiresInSeconds * 1000);
+    driveState.signedIn = true;
+    localStorage.setItem(TOKEN_KEY, JSON.stringify({accessToken: accessToken, expiry: driveState.tokenExpiry}));
+  }
+
+  function clearToken(){
+    driveState.accessToken = null;
+    driveState.tokenExpiry = 0;
+    driveState.signedIn = false;
+    localStorage.removeItem(TOKEN_KEY);
+  }
+
+  function updateSyncUI(mode, label){
+    var el = document.getElementById('syncStatus');
+    el.className = 'sync-status ' + mode;
+    document.getElementById('syncStatusLabel').textContent = label;
+    document.getElementById('storageFooter').textContent = driveState.signedIn
+      ? 'Synced via Google Drive. Export regularly as backup.'
+      : 'Stored only in this browser. Export regularly as backup.';
+  }
+
+  function refreshSyncUI(){
+    if(!driveState.online){
+      updateSyncUI('offline', 'Offline — will sync');
+      return;
+    }
+    if(!driveState.signedIn){
+      updateSyncUI('signedout', 'Sign in to sync');
+      return;
+    }
+    if(driveState.lastError){
+      updateSyncUI('error', 'Sync error — retrying');
+      return;
+    }
+    updateSyncUI('synced', 'Synced');
+  }
+
+  window.addEventListener('online', function(){ driveState.online = true; refreshSyncUI(); trySyncFromDrive(); });
+  window.addEventListener('offline', function(){ driveState.online = false; refreshSyncUI(); });
+
+  function initGoogleAuth(){
+    if(typeof google === 'undefined' || !google.accounts || GOOGLE_CLIENT_ID.indexOf('YOUR_GOOGLE_CLIENT_ID') === 0){
+      refreshSyncUI();
+      return;
+    }
+    driveState.tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: DRIVE_SCOPE,
+      callback: function(resp){
+        if(resp && resp.access_token){
+          storeToken(resp.access_token, resp.expires_in || 3500);
+          refreshSyncUI();
+          document.getElementById('syncModalOverlay').classList.remove('open');
+          showToast('Connected to Google Drive');
+          syncNow();
+        }
+      }
+    });
+    loadStoredToken();
+    refreshSyncUI();
+    if(driveState.signedIn) syncNow();
+  }
+
+  function requestSignIn(){
+    if(!driveState.tokenClient){
+      alert('Google sign-in is not configured yet. Ask your assistant to finish the Google Cloud OAuth setup.');
+      return;
+    }
+    driveState.tokenClient.requestAccessToken({prompt: driveState.signedIn ? '' : 'consent'});
+  }
+
+  function ensureValidToken(callback){
+    if(driveState.accessToken && Date.now() < driveState.tokenExpiry - 30000){
+      callback(true);
+      return;
+    }
+    if(!driveState.tokenClient){ callback(false); return; }
+    driveState.tokenClient.callback = function(resp){
+      if(resp && resp.access_token){
+        storeToken(resp.access_token, resp.expires_in || 3500);
+        callback(true);
+      } else {
+        callback(false);
+      }
+    };
+    driveState.tokenClient.requestAccessToken({prompt: ''});
+  }
+
+  function driveFetch(url, opts){
+    opts = opts || {};
+    opts.headers = opts.headers || {};
+    opts.headers['Authorization'] = 'Bearer ' + driveState.accessToken;
+    return fetch(url, opts);
+  }
+
+  function findDriveFile(cb){
+    var q = encodeURIComponent("name='" + DRIVE_FILENAME + "' and trashed=false");
+    driveFetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=' + q + '&fields=files(id,name)')
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        if(data.files && data.files.length){
+          driveState.fileId = data.files[0].id;
+          cb(driveState.fileId);
+        } else {
+          cb(null);
+        }
+      })
+      .catch(function(err){ driveState.lastError = err; refreshSyncUI(); cb(null, err); });
+  }
+
+  function downloadDriveFile(fileId, cb){
+    driveFetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media')
+      .then(function(r){ return r.json(); })
+      .then(function(data){ cb(data); })
+      .catch(function(err){ driveState.lastError = err; refreshSyncUI(); cb(null, err); });
+  }
+
+  function createDriveFile(payload, cb){
+    var metadata = { name: DRIVE_FILENAME, parents: ['appDataFolder'] };
+    var boundary = '-------cadenceboundary';
+    var body =
+      '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' +
+      JSON.stringify(metadata) + '\r\n' +
+      '--' + boundary + '\r\nContent-Type: application/json\r\n\r\n' +
+      JSON.stringify(payload) + '\r\n' +
+      '--' + boundary + '--';
+
+    driveFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+      method: 'POST',
+      headers: { 'Content-Type': 'multipart/related; boundary=' + boundary },
+      body: body
+    }).then(function(r){ return r.json(); })
+      .then(function(data){ driveState.fileId = data.id; cb(true); })
+      .catch(function(err){ driveState.lastError = err; refreshSyncUI(); cb(false, err); });
+  }
+
+  function updateDriveFile(fileId, payload, cb){
+    driveFetch('https://www.googleapis.com/upload/drive/v3/files/' + fileId + '?uploadType=media', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function(r){
+      if(!r.ok) throw new Error('Drive write failed: ' + r.status);
+      driveState.lastError = null;
+      cb(true);
+    }).catch(function(err){ driveState.lastError = err; refreshSyncUI(); cb(false, err); });
+  }
+
+  function writeToDrive(){
+    if(!driveState.online || !driveState.signedIn) return;
+    ensureValidToken(function(ok){
+      if(!ok) return;
+      updateSyncUI('syncing', 'Syncing…');
+      if(driveState.fileId){
+        updateDriveFile(driveState.fileId, state, function(success){
+          refreshSyncUI();
+        });
+      } else {
+        findDriveFile(function(fileId){
+          if(fileId){
+            updateDriveFile(fileId, state, function(){ refreshSyncUI(); });
+          } else {
+            createDriveFile(state, function(){ refreshSyncUI(); });
+          }
+        });
+      }
+    });
+  }
+
+  var writeDebounceTimer;
+  function scheduleDriveWrite(){
+    if(!driveState.signedIn) return;
+    clearTimeout(writeDebounceTimer);
+    writeDebounceTimer = setTimeout(writeToDrive, 1500);
+  }
+
+  function trySyncFromDrive(){
+    if(!driveState.online || !driveState.signedIn) return;
+    ensureValidToken(function(ok){
+      if(!ok) return;
+      updateSyncUI('syncing', 'Syncing…');
+      findDriveFile(function(fileId){
+        if(!fileId){
+          // First run for this account: push current local/migrated state up.
+          createDriveFile(state, function(){ refreshSyncUI(); });
+          return;
+        }
+        downloadDriveFile(fileId, function(remote){
+          if(!remote){ refreshSyncUI(); return; }
+          if(typeof remote.updatedAt !== 'number') remote.updatedAt = 0;
+          if(remote.updatedAt >= (state.updatedAt || 0)){
+            state = remote;
+          }
+          render();
+          refreshSyncUI();
+        });
+      });
+    });
+  }
+
+  function syncNow(){
+    // One-time migration: if there's legacy local data and nothing on Drive yet,
+    // the local state already loaded into `state` is what gets pushed by trySyncFromDrive's create path.
+    trySyncFromDrive();
+  }
+
+  // ---------- Sync modal ----------
+
+  var syncModal = document.getElementById('syncModalOverlay');
+  document.getElementById('syncStatus').addEventListener('click', function(){
+    document.getElementById('connectDriveBtn').style.display = driveState.signedIn ? 'none' : 'inline-block';
+    document.getElementById('disconnectDriveBtn').style.display = driveState.signedIn ? 'inline-block' : 'none';
+    document.getElementById('syncModalBody').textContent = driveState.signedIn
+      ? 'Connected. Your data syncs automatically to a hidden folder in your Google Drive — it will not appear in your normal Drive file list.'
+      : 'Connect Google Drive so this tracker stays the same on your phone and your laptop. Your data is stored in a hidden app folder in your Drive — it won\'t show up in your regular Drive file list.';
+    syncModal.classList.add('open');
+  });
+  document.getElementById('closeSyncBtn').addEventListener('click', function(){ syncModal.classList.remove('open'); });
+  syncModal.addEventListener('click', function(e){ if(e.target === syncModal) syncModal.classList.remove('open'); });
+  document.getElementById('connectDriveBtn').addEventListener('click', requestSignIn);
+  document.getElementById('disconnectDriveBtn').addEventListener('click', function(){
+    if(confirm('Disconnect Google Drive? Your data will stay on this device but will stop syncing.')){
+      clearToken();
+      driveState.fileId = null;
+      refreshSyncUI();
+      syncModal.classList.remove('open');
+      showToast('Disconnected from Google Drive');
+    }
+  });
+
+  // ---------- Service worker ----------
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('./sw.js').catch(function(){});
+    });
+  }
+
+  // ---------- Init ----------
+  render();
+  refreshSyncUI();
+
+  window.addEventListener('load', function(){
+    // GIS script loads async; poll briefly until available.
+    var tries = 0;
+    (function waitForGis(){
+      tries++;
+      if(typeof google !== 'undefined' && google.accounts){
+        initGoogleAuth();
+      } else if(tries < 40){
+        setTimeout(waitForGis, 125);
+      } else {
+        refreshSyncUI();
+      }
+    })();
+  });
+
+})();
+</script>
+
+</body>
+</html>
