@@ -556,7 +556,7 @@
 </div>
 
 <div class="orbit-wrap">
-  <svg id="orbitSvg" width="440" height="440" viewBox="0 0 440 440"></svg>
+  <svg id="orbitSvg" width="540" height="540" viewBox="0 0 540 540"></svg>
 </div>
 
 <div class="toolbar">
@@ -906,7 +906,7 @@
   function renderOrbit(){
     var svg = document.getElementById('orbitSvg');
     svg.innerHTML = '';
-    var W = 440, CX = 220, CY = 220;
+    var W = 540, CX = 270, CY = 270;
 
     // categories sorted by cadence ascending -> inner ring = most frequent
     var cats = state.categories.slice().sort(function(a,b){ return a.cadence - b.cadence; });
