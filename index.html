@@ -1288,9 +1288,32 @@
     });
   }
 
+  // ---------- Incoming add from another tracker (e.g. LinkedIn/Event pipeline) ----------
+
+  function handleIncomingAdd(){
+    var params = new URLSearchParams(window.location.search);
+    if(!params.has('addName')) return;
+
+    var name = (params.get('addName') || '').trim();
+    var notes = params.get('addNotes') || '';
+    var last = params.get('addLast') || '';
+
+    // Strip the query string so a refresh doesn't reopen this.
+    history.replaceState(null, '', window.location.pathname);
+
+    if(!name) return;
+
+    openPersonModal(null);
+    document.getElementById('personName').value = name;
+    document.getElementById('personNotes').value = notes;
+    if(last) document.getElementById('personLastContact').value = last;
+    showToast('Prefilled from your pipeline — pick a category and save');
+  }
+
   // ---------- Init ----------
   render();
   refreshSyncUI();
+  handleIncomingAdd();
 
   window.addEventListener('load', function(){
     // GIS script loads async; poll briefly until available.
