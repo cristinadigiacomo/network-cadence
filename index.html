@@ -393,6 +393,85 @@
   @media (max-width: 400px){
     .orbit-wrap svg{width:230px; height:230px;}
   }
+
+  /* ---------- Meetings panel ---------- */
+  .meetings-panel{
+    max-width:1080px;
+    margin:24px auto 0;
+    padding:0 40px;
+    display:none;
+  }
+  .meetings-panel.show{display:block;}
+  .meetings-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:10px;
+  }
+  .meetings-title{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--mint-dim);
+  }
+  .meetings-list{
+    border:1px solid var(--hairline);
+    border-radius:6px;
+    overflow:hidden;
+  }
+  .meeting-row{
+    padding:12px 16px;
+    border-bottom:1px solid var(--hairline);
+  }
+  .meeting-row:last-child{border-bottom:none;}
+  .meeting-title{
+    font-size:13.5px;
+    font-weight:500;
+    margin-bottom:2px;
+  }
+  .meeting-time{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--ink-faint);
+    margin-bottom:8px;
+  }
+  .meeting-attendees{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .attendee-chip{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:var(--bg-panel-raised);
+    border:1px solid var(--hairline);
+    border-radius:20px;
+    padding:5px 6px 5px 12px;
+    font-size:12.5px;
+  }
+  .attendee-chip .add-attendee{
+    background:var(--mint-dim);
+    color:#08130f;
+    border:none;
+    border-radius:50%;
+    width:20px;
+    height:20px;
+    font-size:13px;
+    line-height:1;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .attendee-chip.added{color:var(--ink-faint);}
+  .attendee-chip.added .add-attendee{background:var(--sage-dim); color:var(--sage);}
+  .meetings-empty{
+    color:var(--ink-faint);
+    font-size:12.5px;
+    padding:14px 16px;
+  }
 </style>
 </head>
 <body>
@@ -414,6 +493,14 @@
     </div>
   </div>
 </header>
+
+<div class="meetings-panel" id="meetingsPanel">
+  <div class="meetings-head">
+    <span class="meetings-title">Today's meetings</span>
+    <button class="ghost small" id="refreshMeetingsBtn">Refresh</button>
+  </div>
+  <div class="meetings-list" id="meetingsList"></div>
+</div>
 
 <div class="orbit-wrap">
   <svg id="orbitSvg" width="440" height="440" viewBox="0 0 440 440"></svg>
@@ -541,6 +628,8 @@
   // ============================================================
   var GOOGLE_CLIENT_ID = "977352598129-rahsvdmk1na65u4qp4blansf5mvhm6m7.apps.googleusercontent.com";
   var DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+  var CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.readonly";
+  var GOOGLE_SCOPES = DRIVE_SCOPE + " " + CALENDAR_SCOPE;
   var DRIVE_FILENAME = "network-cadence-data.json";
 
   var STORAGE_KEY = "network-cadence-data-v1"; // legacy local key, also used as local mirror
@@ -1099,7 +1188,7 @@
     }
     driveState.tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
-      scope: DRIVE_SCOPE,
+      scope: GOOGLE_SCOPES,
       callback: function(resp){
         if(resp && resp.access_token){
           storeToken(resp.access_token, resp.expires_in || 3500);
@@ -1107,12 +1196,13 @@
           document.getElementById('syncModalOverlay').classList.remove('open');
           showToast('Connected to Google Drive');
           syncNow();
+          loadTodaysMeetings();
         }
       }
     });
     loadStoredToken();
     refreshSyncUI();
-    if(driveState.signedIn) syncNow();
+    if(driveState.signedIn){ syncNow(); loadTodaysMeetings(); }
   }
 
   function requestSignIn(){
@@ -1257,6 +1347,129 @@
     // the local state already loaded into `state` is what gets pushed by trySyncFromDrive's create path.
     trySyncFromDrive();
   }
+
+  // ---------- Today's meetings (Google Calendar) ----------
+
+  var calendarState = { selfEmail: null };
+
+  function getSelfEmail(cb){
+    if(calendarState.selfEmail){ cb(calendarState.selfEmail); return; }
+    driveFetch('https://www.googleapis.com/calendar/v3/calendars/primary')
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        calendarState.selfEmail = data.id || null;
+        cb(calendarState.selfEmail);
+      })
+      .catch(function(){ cb(null); });
+  }
+
+  function attendeeAlreadyTracked(email, name){
+    return state.people.some(function(p){
+      if(email && p.contactInfo && p.contactInfo.toLowerCase().indexOf(email.toLowerCase()) !== -1) return true;
+      return p.name.toLowerCase() === (name || '').toLowerCase();
+    });
+  }
+
+  function loadTodaysMeetings(){
+    if(!driveState.online || !driveState.signedIn) return;
+    ensureValidToken(function(ok){
+      if(!ok) return;
+      getSelfEmail(function(){
+        var now = new Date();
+        var dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+        var dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+        var params = new URLSearchParams({
+          timeMin: dayStart.toISOString(),
+          timeMax: dayEnd.toISOString(),
+          singleEvents: 'true',
+          orderBy: 'startTime',
+          maxResults: '20'
+        });
+        driveFetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?' + params.toString())
+          .then(function(r){ return r.json(); })
+          .then(function(data){ renderMeetings(data.items || []); })
+          .catch(function(){ renderMeetings([]); });
+      });
+    });
+  }
+
+  function formatEventTime(ev){
+    if(ev.start && ev.start.date && !ev.start.dateTime) return 'All day';
+    if(!ev.start || !ev.start.dateTime) return '';
+    var d = new Date(ev.start.dateTime);
+    return d.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
+  }
+
+  function renderMeetings(events){
+    var panel = document.getElementById('meetingsPanel');
+    var list = document.getElementById('meetingsList');
+    panel.classList.add('show');
+
+    var withPeople = events.filter(function(ev){
+      return ev.attendees && ev.attendees.length && ev.status !== 'cancelled';
+    });
+
+    if(!withPeople.length){
+      list.innerHTML = '<div class="meetings-empty">No meetings with other people on your calendar today.</div>';
+      return;
+    }
+
+    list.innerHTML = '';
+    withPeople.forEach(function(ev){
+      var row = document.createElement('div');
+      row.className = 'meeting-row';
+
+      var title = document.createElement('div');
+      title.className = 'meeting-title';
+      title.textContent = ev.summary || '(untitled)';
+      row.appendChild(title);
+
+      var time = document.createElement('div');
+      time.className = 'meeting-time';
+      time.textContent = formatEventTime(ev);
+      row.appendChild(time);
+
+      var attendeesWrap = document.createElement('div');
+      attendeesWrap.className = 'meeting-attendees';
+
+      ev.attendees
+        .filter(function(a){ return !a.resource && a.email !== calendarState.selfEmail; })
+        .forEach(function(a){
+          var name = a.displayName || a.email.split('@')[0];
+          var already = attendeeAlreadyTracked(a.email, name);
+
+          var chip = document.createElement('div');
+          chip.className = 'attendee-chip' + (already ? ' added' : '');
+
+          var label = document.createElement('span');
+          label.textContent = name;
+          chip.appendChild(label);
+
+          var btn = document.createElement('button');
+          btn.className = 'add-attendee';
+          btn.type = 'button';
+          btn.textContent = already ? '✓' : '+';
+          btn.title = already ? 'Already in Cadence' : 'Add to Network Cadence';
+          btn.addEventListener('click', function(){
+            openPersonModal(null);
+            document.getElementById('personName').value = name;
+            document.getElementById('personContactInfo').value = a.email;
+            document.getElementById('personNotes').value = 'Met via calendar — ' + (ev.summary || 'meeting');
+          });
+          chip.appendChild(btn);
+
+          attendeesWrap.appendChild(chip);
+        });
+
+      row.appendChild(attendeesWrap);
+      list.appendChild(row);
+    });
+  }
+
+  document.getElementById('refreshMeetingsBtn').addEventListener('click', function(){
+    loadTodaysMeetings();
+    showToast('Refreshed meetings');
+  });
 
   // ---------- Sync modal ----------
 
