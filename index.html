@@ -682,7 +682,12 @@
   // CONFIG — replace with your real Google Cloud OAuth Client ID
   // ============================================================
   var GOOGLE_CLIENT_ID = "977352598129-rahsvdmk1na65u4qp4blansf5mvhm6m7.apps.googleusercontent.com";
-  var DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+  // drive.appdata (not drive.file) is required to list/query files inside the
+  // special hidden appDataFolder — drive.file can create files there but can't
+  // reliably look them back up, which silently caused duplicate files before.
+  // It's also narrower than drive.file: this app can ONLY see its own hidden
+  // folder, never anything else in your Drive.
+  var DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.appdata";
   var CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.readonly";
   var GOOGLE_SCOPES = DRIVE_SCOPE + " " + CALENDAR_SCOPE;
   var DRIVE_FILENAME = "network-cadence-data.json";
