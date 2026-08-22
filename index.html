@@ -1670,9 +1670,17 @@
   document.getElementById('syncStatus').addEventListener('click', function(){
     document.getElementById('connectDriveBtn').style.display = driveState.signedIn ? 'none' : 'inline-block';
     document.getElementById('disconnectDriveBtn').style.display = driveState.signedIn ? 'inline-block' : 'none';
-    document.getElementById('syncModalBody').textContent = driveState.signedIn
+    var bodyText = driveState.signedIn
       ? 'Connected. Your data syncs automatically to a hidden folder in your Google Drive — it will not appear in your normal Drive file list.'
       : 'Connect Google Drive so this tracker stays the same on your phone and your laptop. Your data is stored in a hidden app folder in your Drive — it won\'t show up in your regular Drive file list.';
+    if(driveState.lastError){
+      var errMsg = (driveState.lastError.message) ||
+        (driveState.lastError.error && driveState.lastError.error.message) ||
+        (typeof driveState.lastError === 'string' ? driveState.lastError : JSON.stringify(driveState.lastError));
+      bodyText += '\n\nLast sync error: ' + errMsg;
+    }
+    document.getElementById('syncModalBody').textContent = bodyText;
+    document.getElementById('syncModalBody').style.whiteSpace = 'pre-wrap';
     syncModal.classList.add('open');
   });
   document.getElementById('closeSyncBtn').addEventListener('click', function(){ syncModal.classList.remove('open'); });
