@@ -1337,12 +1337,24 @@
   }
 
   function findDriveFile(cb){
-    var q = encodeURIComponent("name='" + DRIVE_FILENAME + "' and trashed=false");
-    driveFetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=' + q +
-      '&fields=files(id,name,modifiedTime)&orderBy=modifiedTime desc')
-      .then(function(r){ return r.json(); })
-      .then(function(data){
-        var files = data.files || [];
+    var params = new URLSearchParams({
+      spaces: 'appDataFolder',
+      q: "name='" + DRIVE_FILENAME + "' and trashed=false",
+      fields: 'files(id,name,modifiedTime)',
+      orderBy: 'modifiedTime desc'
+    });
+    driveFetch('https://www.googleapis.com/drive/v3/files?' + params.toString())
+      .then(function(r){
+        return r.json().then(function(data){ return {ok: r.ok, data: data}; });
+      })
+      .then(function(res){
+        if(!res.ok){
+          driveState.lastError = (res.data && res.data.error) || new Error('Drive lookup failed');
+          refreshSyncUI();
+          cb(null, driveState.lastError);
+          return;
+        }
+        var files = res.data.files || [];
         if(!files.length){ cb(null); return; }
 
         // Defensive cleanup: if earlier bugs left duplicate data files behind,
@@ -1434,9 +1446,15 @@
     ensureValidToken(function(ok){
       if(!ok) return;
       updateSyncUI('syncing', 'Syncing…');
-      findDriveFile(function(fileId){
+      findDriveFile(function(fileId, err){
         if(!fileId){
-          // First run for this account: push current local/migrated state up.
+          if(err){
+            // A real lookup error (network/API) — do NOT treat this as "no file
+            // exists yet", or we'd spawn a duplicate data file on every hiccup.
+            refreshSyncUI();
+            return;
+          }
+          // Confirmed no file exists yet: first run for this account.
           createDriveFile(state, function(){ refreshSyncUI(); });
           return;
         }
