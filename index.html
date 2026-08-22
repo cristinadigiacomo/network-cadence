@@ -182,6 +182,7 @@
     padding:9px 12px;
     border-radius:var(--radius);
     outline:none;
+    color-scheme:dark;
   }
   input:focus, select:focus, textarea:focus{border-color:var(--gold-dim);}
   .search-input{flex:1; min-width:180px;}
@@ -761,6 +762,29 @@
     return c ? c.cadence : 60;
   }
 
+  // ---------- Category colors ----------
+  // Each category gets a fixed, distinct color derived from its name, so it
+  // stays stable even as categories are reordered or ring sort changes.
+  var CATEGORY_PALETTE = [
+    '#4dffb8', // mint
+    '#d0a24c', // amber
+    '#c1666b', // rose
+    '#7fb8e0', // sky
+    '#c48ad6', // lavender
+    '#e08a5f', // coral
+    '#7a9b76', // sage
+    '#d4c15a', // gold
+    '#6bc9c0', // teal
+    '#b98fd1'  // plum
+  ];
+
+  function categoryColor(catName){
+    var str = catName || '';
+    var hash = 0;
+    for(var i=0; i<str.length; i++){ hash = (hash * 31 + str.charCodeAt(i)) >>> 0; }
+    return CATEGORY_PALETTE[hash % CATEGORY_PALETTE.length];
+  }
+
   function touch(){
     state.updatedAt = Date.now();
   }
@@ -863,7 +887,11 @@
         '<td data-label=""></td>';
 
       tr.querySelector('.name-cell').textContent = p.name;
-      tr.querySelector('.category-pill').textContent = p.category;
+      var pill = tr.querySelector('.category-pill');
+      pill.textContent = p.category;
+      var pillColor = categoryColor(p.category);
+      pill.style.color = pillColor;
+      pill.style.borderColor = pillColor;
       tr.children[3].textContent = 'every ' + p.cadence + 'd';
       tr.children[4].textContent = p.lastContact || '—';
       tr.children[5].textContent = dueLabel(p);
@@ -924,9 +952,13 @@
 
     cats.forEach(function(cat, i){
       var r = minRing + step * i;
+      var catColor = categoryColor(cat.name);
+
       var track = document.createElementNS(ns,'circle');
       track.setAttribute('cx', CX); track.setAttribute('cy', CY); track.setAttribute('r', r);
       track.setAttribute('class','ring-track');
+      track.setAttribute('stroke', catColor);
+      track.setAttribute('stroke-opacity', '0.45');
       svg.appendChild(track);
 
       // Spread labels around the circle (instead of stacking on the right)
@@ -941,6 +973,7 @@
       label.setAttribute('x', lx);
       label.setAttribute('y', ly);
       label.setAttribute('class','ring-label');
+      label.setAttribute('fill', catColor);
       label.setAttribute('text-anchor', cosA > 0.15 ? 'start' : (cosA < -0.15 ? 'end' : 'middle'));
       label.setAttribute('dominant-baseline', 'middle');
       label.textContent = cat.name;
