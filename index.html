@@ -1338,15 +1338,27 @@
 
   function findDriveFile(cb){
     var q = encodeURIComponent("name='" + DRIVE_FILENAME + "' and trashed=false");
-    driveFetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=' + q + '&fields=files(id,name)')
+    driveFetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=' + q +
+      '&fields=files(id,name,modifiedTime)&orderBy=modifiedTime desc')
       .then(function(r){ return r.json(); })
       .then(function(data){
-        if(data.files && data.files.length){
-          driveState.fileId = data.files[0].id;
-          cb(driveState.fileId);
-        } else {
-          cb(null);
+        var files = data.files || [];
+        if(!files.length){ cb(null); return; }
+
+        // Defensive cleanup: if earlier bugs left duplicate data files behind,
+        // always treat the most recently modified one as canonical, and trash
+        // the rest so future syncs don't pick a stale one at random.
+        driveState.fileId = files[0].id;
+        if(files.length > 1){
+          files.slice(1).forEach(function(dupe){
+            driveFetch('https://www.googleapis.com/drive/v3/files/' + dupe.id, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({trashed: true})
+            }).catch(function(){});
+          });
         }
+        cb(driveState.fileId);
       })
       .catch(function(err){ driveState.lastError = err; refreshSyncUI(); cb(null, err); });
   }
