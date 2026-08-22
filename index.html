@@ -1706,7 +1706,13 @@
     return changed;
   }
 
-  function backfillDefaultCategories(){
+  // silent=true skips bumping updatedAt. This matters on a device that has
+  // never synced before: its blank local state would otherwise get a
+  // freshly-touched timestamp that looks "newer" than real data already on
+  // Drive, causing the empty state to win the last-write-wins comparison
+  // and overwrite good data. Only touch() once we know this state is
+  // authoritative (i.e. after a real Drive pull, or when definitely offline).
+  function backfillDefaultCategories(silent){
     var added = false;
     NEW_DEFAULT_CATEGORIES.forEach(function(name){
       var exists = state.categories.some(function(c){ return c.name === name; });
@@ -1717,12 +1723,12 @@
       }
     });
     if(backfillCategoryRenames()) added = true;
-    if(added) touch();
+    if(added && !silent) touch();
     return added;
   }
 
   // ---------- Init ----------
-  backfillDefaultCategories();
+  backfillDefaultCategories(true); // silent: don't let a blank local state on a new device out-rank real Drive data
   render();
   refreshSyncUI();
   handleIncomingAdd();
