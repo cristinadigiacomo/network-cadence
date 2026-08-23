@@ -1,4 +1,4 @@
-const CACHE_NAME = 'network-cadence-v2';
+const CACHE_NAME = 'network-cadence-v3';
 const SHELL_FILES = [
   './',
   './index.html',
